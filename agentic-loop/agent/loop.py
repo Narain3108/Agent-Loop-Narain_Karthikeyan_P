@@ -7,6 +7,18 @@ from google.genai import types
 
 from agent.prompts import REASON_PROMPT, REFLECT_PROMPT
 from agent.tools import TOOL_DEFINITIONS, TOOL_REGISTRY, _extract_all_text
+from agent.harness import with_retry, CONFIG
+
+def _parse_json(text: str) -> Dict[str, Any]:
+    """Robust JSON parsing that strips markdown code blocks commonly returned by LLMs."""
+    text = text.strip()
+    if text.startswith("```json"):
+        text = text[7:]
+    elif text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return json.loads(text.strip())
 
 # Define Schemas for LLM Structured Output
 class ReasonPlan(BaseModel):
@@ -75,6 +87,7 @@ def perceive(input_data: str) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
+@with_retry
 def reason(observation: Dict[str, Any], memory: Dict[str, Any]) -> Dict[str, Any]:
     """
     Call the LLM to decide what to do next based on the observation.
@@ -91,18 +104,23 @@ def reason(observation: Dict[str, Any], memory: Dict[str, Any]) -> Dict[str, Any
     
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
-        temperature=0.2
+        temperature=CONFIG["llm"]["temperature"]
     )
     
     response = client.models.generate_content(
-        model='gemini-3.5-flash',
+        model=CONFIG["llm"]["model"],
         contents=prompt,
         config=config
     )
     
     try:
-        # Pydantic models when used as response_schema return JSON text, we parse it
-        plan_dict = json.loads(response.text)
+        # Pydantic models when used as response_schema return JSON text, we parse it safely
+        plan_dict = _parse_json(response.text)
+        
+        # Track tokens
+        if getattr(response, "usage_metadata", None):
+            plan_dict["__tokens__"] = response.usage_metadata.total_token_count
+            
         print(f"Plan: {plan_dict['chosen_action']}")
         print(f"Reasoning: {plan_dict['reasoning_trace']}")
         return plan_dict
@@ -137,6 +155,7 @@ def act(plan: Dict[str, Any], tools: Dict[str, Callable]) -> Dict[str, Any]:
         return {
             "status": "success",
             "action": action_name,
+            "parameters": parameters,
             "result_content": result_content
         }
     except Exception as e:
@@ -146,6 +165,7 @@ def act(plan: Dict[str, Any], tools: Dict[str, Callable]) -> Dict[str, Any]:
         }
 
 
+@with_retry
 def reflect(result: Dict[str, Any], observation: Dict[str, Any]) -> Dict[str, Any]:
     """
     Evaluate whether the goal was met.
@@ -161,17 +181,21 @@ def reflect(result: Dict[str, Any], observation: Dict[str, Any]) -> Dict[str, An
     
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
-        temperature=0.1
+        temperature=CONFIG["llm"]["temperature"]
     )
     
     response = client.models.generate_content(
-        model='gemini-3.5-flash',
+        model=CONFIG["llm"]["model"],
         contents=prompt,
         config=config
     )
     
     try:
-        reflection_dict = json.loads(response.text)
+        reflection_dict = _parse_json(response.text)
+        
+        if getattr(response, "usage_metadata", None):
+            reflection_dict["__tokens__"] = response.usage_metadata.total_token_count
+            
         print(f"Reflection: is_done={reflection_dict['is_done']}, score={reflection_dict['quality_score']}")
         print(f"Next instruction: {reflection_dict['next_instruction']}")
         return reflection_dict

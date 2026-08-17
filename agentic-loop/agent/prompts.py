@@ -31,7 +31,7 @@ CURRENT OBSERVATION (State of the world before the action):
 {observation}
 
 Evaluate the result based on these criteria:
-1. If the action was `extract_and_summarize_chunk`, check if the summary is coherent and doesn't look like an error.
+1. If the action was `extract_and_summarize_chunk`, look at the `parameters` in the LAST ACTION RESULT to see exactly which word indices were processed. Check if the summary is coherent. Ensure you instruct the Reason step to pick up exactly where this chunk left off (e.g., if end_word_idx was 50, next instruction must say to start at 50). Do NOT claim the entire document is finished unless the `end_word_idx` is equal to or greater than the `total_words` in the observation.
 2. If the action was `compile_final_summary`, check if it successfully combined everything.
 
 Determine if the agent is done (i.e., final summary is compiled).

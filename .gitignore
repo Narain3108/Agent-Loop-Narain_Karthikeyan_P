@@ -3,9 +3,9 @@
 *.env
 .env.local
 .env.remote
-/butcher-agentic-loop/venv/
-/butcher-agentic-loop/.env
+/agentic-loop/venv/
+/agentic-loop/.env
 
-/butcher-agentic-loop/__pycache__/
-butcher-agentic-loop/*.pyc
+/agentic-loop/__pycache__/
+agentic-loop/*.pyc
 *.pdf

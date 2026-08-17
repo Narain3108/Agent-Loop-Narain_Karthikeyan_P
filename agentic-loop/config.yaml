@@ -1,0 +1,13 @@
+llm:
+  model: "gemini-3.5-flash"
+  temperature: 0.2
+
+loop:
+  max_iterations: 10
+  infinite_loop_threshold: 2
+
+harness:
+  max_retries: 5
+  base_delay: 2.0 # seconds
+  max_delay: 35.0 # seconds
+  token_budget: 100000 # Warning threshold
