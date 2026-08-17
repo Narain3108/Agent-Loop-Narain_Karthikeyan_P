@@ -1,0 +1,11 @@
+/venv   
+/.env
+*.env
+.env.local
+.env.remote
+/butcher-agentic-loop/venv/
+/butcher-agentic-loop/.env
+
+/butcher-agentic-loop/__pycache__/
+butcher-agentic-loop/*.pyc
+*.pdf
