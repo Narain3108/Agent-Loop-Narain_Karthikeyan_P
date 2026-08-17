@@ -75,7 +75,7 @@ def perceive(input_data: str) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
-def reason(observation: Dict[str, Any], memory: List[Any]) -> Dict[str, Any]:
+def reason(observation: Dict[str, Any], memory: Dict[str, Any]) -> Dict[str, Any]:
     """
     Call the LLM to decide what to do next based on the observation.
     Returns a plan dict: chosen action, parameters, reasoning trace.

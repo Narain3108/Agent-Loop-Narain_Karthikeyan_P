@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from agent.loop import perceive, reason, act, reflect
 from agent.tools import TOOL_REGISTRY
+from agent.memory_manager import MemoryManager
 
 # Load environment variables (API Key)
 load_dotenv()
@@ -16,7 +17,7 @@ def run_agentic_loop(filepath: str, max_iterations: int = 10):
     input_data = json.dumps({"filepath": filepath})
     
     observation = {}
-    memory = [] # Milestone 1: memory is empty
+    memory = MemoryManager()
     
     for i in range(max_iterations):
         print(f"\n========== ITERATION {i+1} ==========")
@@ -28,7 +29,9 @@ def run_agentic_loop(filepath: str, max_iterations: int = 10):
             break
             
         # 2. REASON
-        plan = reason(observation, memory)
+        # Retrieve context from short-term and semantic memory
+        recalled_context = memory.recall(query=observation.get("last_instruction"))
+        plan = reason(observation, recalled_context)
         if "error" in plan:
             print(f"Reason Error: {plan['error']}")
             break
@@ -42,11 +45,29 @@ def run_agentic_loop(filepath: str, max_iterations: int = 10):
         # 4. REFLECT
         reflection = reflect(result, observation)
         
+        # Save to memory manager (session trace and vector DB)
+        summary_to_save = None
+        if result.get("action") == "extract_and_summarize_chunk" and reflection.get("quality_score", 0) >= 0.7:
+            summary_to_save = result.get("result_content")
+            
+        memory.save(
+            iteration_data={
+                "observation": observation,
+                "plan": plan,
+                "action_result": result,
+                "reflection": reflection
+            },
+            summary_text=summary_to_save
+        )
+        
         # Loop state management
         if reflection.get("is_done"):
             print("\n>>> GOAL ACCOMPLISHED! <<<")
             if result.get("action") == "compile_final_summary":
                 print(f"Final Result:\n{result.get('result_content')}")
+            
+            # Wipe memory for next session as requested
+            memory.clear()
             break
             
         # If the action was successful and it was an extraction, we should save the summary

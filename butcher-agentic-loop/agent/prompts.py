@@ -6,11 +6,13 @@ You have access to the following tools:
 CURRENT OBSERVATION (State of the world):
 {observation}
 
-MEMORY (Past context):
+MEMORY (Context from previous iterations and semantic recall):
 {memory}
 
-Analyze the observation. Determine the next logical step to summarize the document.
-- If there are unsummarized words/tokens, plan to use `extract_and_summarize_chunk`. Pick a reasonable chunk size (e.g., 500-1000 words).
+Analyze the observation and memory. Determine the next logical step to summarize the document.
+- Use `recent_session_history` in Memory to understand what you just did and avoid repeating failed actions.
+- Use `relevant_past_summaries` in Memory to maintain context if you need to stitch chunks together.
+- If there are unsummarized words/tokens, plan to use `extract_and_summarize_chunk`. Pick a reasonable chunk size (e.g., 40-50 words).
 - If the entire document has been summarized, plan to use `compile_final_summary` using the accumulated summaries from the observation.
 
 You must output a JSON conforming to the requested schema, containing:
